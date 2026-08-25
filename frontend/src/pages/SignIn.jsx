@@ -25,7 +25,7 @@ export default function SignIn() {
   const [rememberMe, setRememberMe] = useState(false)
   const isLoading = authStatus === 'loading' || userStatus === 'loading'
   const errorMessage = authError || userError
-  const redirectPath = location.state?.from?.pathname || '/user'
+  const redirectPath = location.state?.from?.pathname || '/profile'
 
   const handleSubmit = async event => {
     event.preventDefault()

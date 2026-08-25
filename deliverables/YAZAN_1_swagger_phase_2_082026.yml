@@ -1,0 +1,596 @@
+openapi: 3.0.3
+info:
+  title: Bank Argent Transaction API Proposal
+  description: >
+    Proposed authenticated transaction endpoints for Argent Bank. This document
+    describes read-only transaction access plus mutable user metadata attached
+    to transactions. It is a proposal only and is not implemented by the current
+    Express backend.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Local development server
+tags:
+  - name: Transactions
+    description: User-scoped account transaction operations
+paths:
+  /transactions/current-month:
+    get:
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      summary: Get current-month transactions grouped by account
+      description: >
+        Returns all transactions for the authenticated user's accounts for the
+        current calendar month, grouped by account. The current month is
+        determined by the API server.
+      operationId: getCurrentMonthTransactions
+      responses:
+        '200':
+          description: Current-month transactions grouped by account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentMonthTransactionsResponse'
+              example:
+                status: 200
+                message: Current month transactions retrieved successfully
+                body:
+                  month: '2026-04'
+                  accounts:
+                    - accountId: acc_checking_8349
+                      accountName: Argent Bank Checking
+                      accountNumberSuffix: '8349'
+                      balance: 2082.79
+                      balanceType: Available Balance
+                      transactions:
+                        - transactionId: txn_001
+                          date: '2026-04-20'
+                          description: Golden Sun Bakery
+                          amount: -5
+                          balance: 2082.79
+                          metadata:
+                            category: Food
+                            notes: Morning coffee
+                    - accountId: acc_savings_6712
+                      accountName: Argent Bank Savings
+                      accountNumberSuffix: '6712'
+                      balance: 10928.42
+                      balanceType: Available Balance
+                      transactions: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /transactions/{transactionId}:
+    get:
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      summary: Get one transaction
+      description: >
+        Returns the full details for a single transaction owned by the
+        authenticated user, including account summary data and any user metadata.
+      operationId: getTransactionById
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: Transaction details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetailResponse'
+              example:
+                status: 200
+                message: Transaction details retrieved successfully
+                body:
+                  transactionId: txn_001
+                  account:
+                    accountId: acc_checking_8349
+                    accountName: Argent Bank Checking
+                    accountNumberSuffix: '8349'
+                  date: '2026-04-20'
+                  description: Golden Sun Bakery
+                  type: Electronic
+                  amount: -5
+                  balance: 2082.79
+                  metadata:
+                    category: Food
+                    notes: Morning coffee
+                    createdAt: '2026-04-20T10:15:00.000Z'
+                    updatedAt: '2026-04-21T08:30:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TransactionNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /transactions/{transactionId}/metadata:
+    post:
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      summary: Add transaction metadata
+      description: >
+        Creates user metadata for a transaction owned by the authenticated user.
+        Metadata is user-editable information only; the transaction amount,
+        balance, date, description, and type remain read-only.
+      operationId: createTransactionMetadata
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      requestBody:
+        required: true
+        description: Metadata to attach to the transaction
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionMetadataInput'
+            example:
+              category: Food
+              notes: Morning coffee
+      responses:
+        '201':
+          description: Transaction metadata created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionMetadataResponse'
+              example:
+                status: 201
+                message: Transaction metadata created successfully
+                body:
+                  transactionId: txn_001
+                  metadata:
+                    category: Food
+                    notes: Morning coffee
+                    createdAt: '2026-04-20T10:15:00.000Z'
+                    updatedAt: '2026-04-20T10:15:00.000Z'
+        '400':
+          $ref: '#/components/responses/InvalidMetadata'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TransactionNotFound'
+        '409':
+          description: Metadata already exists for this transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 409
+                message: Transaction metadata already exists
+                body: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      summary: Edit transaction metadata
+      description: >
+        Replaces editable metadata for a transaction owned by the authenticated
+        user. Omitted editable fields are cleared unless the API implementation
+        chooses to preserve them.
+      operationId: updateTransactionMetadata
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      requestBody:
+        required: true
+        description: Updated transaction metadata
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionMetadataInput'
+            example:
+              category: Groceries
+              notes: Updated receipt note
+      responses:
+        '200':
+          description: Transaction metadata updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionMetadataResponse'
+              example:
+                status: 200
+                message: Transaction metadata updated successfully
+                body:
+                  transactionId: txn_001
+                  metadata:
+                    category: Groceries
+                    notes: Updated receipt note
+                    createdAt: '2026-04-20T10:15:00.000Z'
+                    updatedAt: '2026-04-21T08:30:00.000Z'
+        '400':
+          $ref: '#/components/responses/InvalidMetadata'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TransactionOrMetadataNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      summary: Delete transaction metadata
+      description: >
+        Deletes the authenticated user's editable metadata from a transaction.
+        The transaction record itself is not deleted.
+      operationId: deleteTransactionMetadata
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: Transaction metadata deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteMetadataResponse'
+              example:
+                status: 200
+                message: Transaction metadata deleted successfully
+                body:
+                  transactionId: txn_001
+                  metadata: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TransactionOrMetadataNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      description: Unique transaction identifier
+      schema:
+        type: string
+        example: txn_001
+  responses:
+    Unauthorized:
+      description: Missing, malformed, or expired bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 401
+            message: Token is missing from header
+            body: null
+    Forbidden:
+      description: The authenticated user cannot access this transaction
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 403
+            message: Access to this transaction is forbidden
+            body: null
+    TransactionNotFound:
+      description: Transaction was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 404
+            message: Transaction not found
+            body: null
+    TransactionOrMetadataNotFound:
+      description: Transaction or metadata was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 404
+            message: Transaction metadata not found
+            body: null
+    InvalidMetadata:
+      description: Metadata payload is invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 400
+            message: Category must be one of the supported values
+            body: null
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: 500
+            message: Internal Server Error
+            body: null
+  schemas:
+    CurrentMonthTransactionsResponse:
+      type: object
+      required:
+        - status
+        - message
+        - body
+      properties:
+        status:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Current month transactions retrieved successfully
+        body:
+          type: object
+          required:
+            - month
+            - accounts
+          properties:
+            month:
+              type: string
+              pattern: '^\d{4}-\d{2}$'
+              description: Current month represented as YYYY-MM
+              example: '2026-04'
+            accounts:
+              type: array
+              items:
+                $ref: '#/components/schemas/AccountTransactionsGroup'
+    TransactionDetailResponse:
+      type: object
+      required:
+        - status
+        - message
+        - body
+      properties:
+        status:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Transaction details retrieved successfully
+        body:
+          $ref: '#/components/schemas/TransactionDetail'
+    TransactionMetadataResponse:
+      type: object
+      required:
+        - status
+        - message
+        - body
+      properties:
+        status:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Transaction metadata updated successfully
+        body:
+          type: object
+          required:
+            - transactionId
+            - metadata
+          properties:
+            transactionId:
+              type: string
+              example: txn_001
+            metadata:
+              $ref: '#/components/schemas/TransactionMetadata'
+    DeleteMetadataResponse:
+      type: object
+      required:
+        - status
+        - message
+        - body
+      properties:
+        status:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Transaction metadata deleted successfully
+        body:
+          type: object
+          required:
+            - transactionId
+            - metadata
+          properties:
+            transactionId:
+              type: string
+              example: txn_001
+            metadata:
+              nullable: true
+              example: null
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+        - body
+      properties:
+        status:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Invalid Fields
+        body:
+          nullable: true
+          example: null
+    AccountTransactionsGroup:
+      type: object
+      required:
+        - accountId
+        - accountName
+        - accountNumberSuffix
+        - balance
+        - balanceType
+        - transactions
+      properties:
+        accountId:
+          type: string
+          example: acc_checking_8349
+        accountName:
+          type: string
+          example: Argent Bank Checking
+        accountNumberSuffix:
+          type: string
+          example: '8349'
+        balance:
+          type: number
+          format: float
+          example: 2082.79
+        balanceType:
+          type: string
+          example: Available Balance
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionSummary'
+    TransactionSummary:
+      type: object
+      required:
+        - transactionId
+        - date
+        - description
+        - amount
+        - balance
+      properties:
+        transactionId:
+          type: string
+          example: txn_001
+        date:
+          type: string
+          format: date
+          example: '2026-04-20'
+        description:
+          type: string
+          example: Golden Sun Bakery
+        amount:
+          type: number
+          format: float
+          description: Negative values are debits; positive values are credits.
+          example: -5
+        balance:
+          type: number
+          format: float
+          example: 2082.79
+        metadata:
+          $ref: '#/components/schemas/TransactionMetadataNullable'
+    TransactionDetail:
+      type: object
+      required:
+        - transactionId
+        - account
+        - date
+        - description
+        - type
+        - amount
+        - balance
+      properties:
+        transactionId:
+          type: string
+          example: txn_001
+        account:
+          type: object
+          required:
+            - accountId
+            - accountName
+            - accountNumberSuffix
+          properties:
+            accountId:
+              type: string
+              example: acc_checking_8349
+            accountName:
+              type: string
+              example: Argent Bank Checking
+            accountNumberSuffix:
+              type: string
+              example: '8349'
+        date:
+          type: string
+          format: date
+          example: '2026-04-20'
+        description:
+          type: string
+          example: Golden Sun Bakery
+        type:
+          type: string
+          example: Electronic
+        amount:
+          type: number
+          format: float
+          example: -5
+        balance:
+          type: number
+          format: float
+          example: 2082.79
+        metadata:
+          $ref: '#/components/schemas/TransactionMetadataNullable'
+    TransactionMetadataInput:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        category:
+          type: string
+          description: User-selected category for transaction classification
+          enum:
+            - Food
+            - Groceries
+            - Shopping
+            - Entertainment
+            - Transportation
+            - Utilities
+            - Healthcare
+            - Travel
+            - Income
+            - Other
+          example: Food
+        notes:
+          type: string
+          description: User-entered note for the transaction
+          maxLength: 500
+          example: Morning coffee
+    TransactionMetadata:
+      allOf:
+        - $ref: '#/components/schemas/TransactionMetadataInput'
+        - type: object
+          required:
+            - createdAt
+            - updatedAt
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+              example: '2026-04-20T10:15:00.000Z'
+            updatedAt:
+              type: string
+              format: date-time
+              example: '2026-04-21T08:30:00.000Z'
+    TransactionMetadataNullable:
+      nullable: true
+      allOf:
+        - $ref: '#/components/schemas/TransactionMetadata'

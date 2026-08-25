@@ -15,7 +15,8 @@ export default function Header() {
   const location = useLocation()
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const firstName = useSelector(selectUserFirstName)
-  const showUserNav = isAuthenticated && location.pathname !== '/sign-in'
+  const showUserNav =
+    isAuthenticated && !['/login', '/sign-in'].includes(location.pathname)
 
   const handleLogout = () => {
     dispatch(logout())
@@ -31,7 +32,7 @@ export default function Header() {
       <div>
         {showUserNav ? (
           <>
-            <NavLink className="main-nav-item" to="/user">
+            <NavLink className="main-nav-item" to="/profile">
               <i className="fa fa-user-circle"></i>
               {firstName || 'Profile'}
             </NavLink>
@@ -41,7 +42,7 @@ export default function Header() {
             </Link>
           </>
         ) : (
-          <NavLink className="main-nav-item" to="/sign-in">
+          <NavLink className="main-nav-item" to="/login">
             <i className="fa fa-user-circle"></i>
             Sign In
           </NavLink>

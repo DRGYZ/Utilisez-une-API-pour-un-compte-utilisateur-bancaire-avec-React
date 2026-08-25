@@ -117,15 +117,15 @@ implemented in the backend.
 Run through this checklist before submission:
 
 - [ ] Can access `/`
-- [ ] Can go to `/sign-in`
+- [ ] Can go to `/login` (`/sign-in` is also supported)
 - [ ] Login works with a seeded test account
 - [ ] Wrong password shows an error
-- [ ] Successful login redirects to `/user`
+- [ ] Successful login redirects to `/profile`
 - [ ] Profile data loads from the backend
 - [ ] Edit name works and saves through the API
 - [ ] Data persists after refresh
 - [ ] Logout works
-- [ ] `/user` redirects to `/sign-in` when not logged in
+- [ ] `/profile` and `/user` redirect to `/login` when not logged in
 
 ## Notes
 
