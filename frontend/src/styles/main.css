@@ -19,6 +19,7 @@ body {
   min-height: 100vh;
 }
 
+main,
 .main {
   flex: 1;
 }
@@ -118,7 +119,9 @@ body {
 
 @media (min-width: 920px) {
   .hero {
-    height: 400px;
+    flex: 1;
+    height: auto;
+    min-height: 400px;
     background-position: 0% 33%;
   }
 
@@ -145,6 +148,11 @@ body {
 }
 
 @media (min-width: 920px) {
+  main:has(> .hero) {
+    display: flex;
+    flex-direction: column;
+  }
+
   .features {
     flex-direction: row;
   }

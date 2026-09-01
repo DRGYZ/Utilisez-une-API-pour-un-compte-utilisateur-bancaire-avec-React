@@ -5,6 +5,10 @@
 logs
 *.log
 
+# Local generated artifacts
+/output/
+/tmp/
+
 # Runtime data
 pids
 *.pid
