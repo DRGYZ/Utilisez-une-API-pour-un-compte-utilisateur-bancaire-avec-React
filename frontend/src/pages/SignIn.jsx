@@ -6,11 +6,6 @@ import {
   selectAuthError,
   selectAuthStatus
 } from '../features/auth/authSlice'
-import {
-  getProfile,
-  selectUserError,
-  selectUserStatus
-} from '../features/user/userSlice'
 
 export default function SignIn() {
   const dispatch = useDispatch()
@@ -18,21 +13,17 @@ export default function SignIn() {
   const navigate = useNavigate()
   const authStatus = useSelector(selectAuthStatus)
   const authError = useSelector(selectAuthError)
-  const userStatus = useSelector(selectUserStatus)
-  const userError = useSelector(selectUserError)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const isLoading = authStatus === 'loading' || userStatus === 'loading'
-  const errorMessage = authError || userError
+  const isLoading = authStatus === 'loading'
   const redirectPath = location.state?.from?.pathname || '/profile'
 
   const handleSubmit = async event => {
     event.preventDefault()
 
     try {
-      await dispatch(login({ email, password })).unwrap()
-      await dispatch(getProfile()).unwrap()
+      await dispatch(login({ email, password, rememberMe })).unwrap()
       navigate(redirectPath, { replace: true })
     } catch {
       // Error messages are stored in Redux and rendered below.
@@ -79,9 +70,9 @@ export default function SignIn() {
             />
             <label htmlFor="remember-me">Remember me</label>
           </div>
-          {errorMessage ? (
+          {authError ? (
             <p className="form-error" role="alert">
-              {errorMessage}
+              {authError}
             </p>
           ) : null}
           <button className="sign-in-button" type="submit" disabled={isLoading}>

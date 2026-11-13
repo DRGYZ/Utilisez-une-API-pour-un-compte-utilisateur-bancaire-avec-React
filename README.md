@@ -1,134 +1,49 @@
-# Argent Bank - OpenClassrooms Project 10
+# Argent Bank
 
-This repository contains the original Argent Bank backend API and a Vite React
-frontend for the OpenClassrooms Argent Bank project.
+React and Redux Toolkit frontend for the OpenClassrooms Argent Bank project. Sign in with a demo account, open the protected profile, and edit the account holder’s name. The Express API saves the change in MongoDB.
 
-## Project Structure
+![Argent Bank demo profile with sample account balances](docs/profile-demo.png)
 
-```text
-.
-├── server/                  # Existing Express/MongoDB backend
-├── frontend/                # Vite React frontend
-├── designs/                 # Original static HTML, CSS, images, and wireframes
-├── docs/
-│   └── swagger-transactions.yaml
-├── swagger.yaml             # Existing backend Swagger file
-└── package.json             # Backend scripts and root frontend helper scripts
-```
+The account balances are sample data. The [transaction API proposal](docs/swagger-transactions.yaml) describes a separate phase of the project. Transaction history and transaction edits are outside the current demo.
 
-## Prerequisites
+## Run locally
 
-- Node.js
-- MongoDB Community Server running locally on `localhost:27017`
+Use Node.js 24, npm, and a running MongoDB Community Server on port 27017. The defaults point to local services. Copy `.env.example` to `.env` if you need to change the database URL or API port. Use `frontend/.env.example` for a custom frontend API URL.
 
-## Install And Run
+In the first terminal, from the repository root:
 
-### Backend
-
-```bash
-npm install
-npm run dev:server
+```sh
+npm ci
 npm run populate-db
+npm run server
 ```
 
-The backend runs at:
+In a second terminal, from the same directory:
 
-```text
-http://localhost:3001
-```
-
-The existing backend API documentation is available at:
-
-```text
-http://localhost:3001/api-docs
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend runs at:
-
-```text
-http://localhost:5173
-```
-
-You can also run the frontend from the repository root:
-
-```bash
+```sh
+npm ci --prefix frontend
 npm run frontend:dev
 ```
 
-## Test Accounts
+Open `http://localhost:5173/`. The API documentation is at `http://localhost:3001/api-docs`. The seed creates missing demo accounts and keeps existing profile edits when run again.
 
-Tony Stark:
+| Demo user | Email | Password |
+| --- | --- | --- |
+| Tony Stark | `tony@stark.com` | `password123` |
+| Steve Rogers | `steve@rogers.com` | `password456` |
 
-```text
-email: tony@stark.com
-password: password123
+A regular session stays in the current browser tab. **Remember me** keeps it across browser restarts until the token expires or you sign out. By default, restarting the API signs out existing sessions. Set a private `SECRET_KEY` in the API environment to keep sessions across restarts.
+
+## Verify
+
+```sh
+npm test
+npm run frontend:build
 ```
 
-Steve Rogers:
+The API tests use a temporary MongoDB database. Set `ARGENT_TEST_DATABASE_URL` to point them at a different local MongoDB instance. GitHub Actions runs the API tests and builds the frontend.
 
-```text
-email: steve@rogers.com
-password: password456
-```
-
-## Features
-
-- React frontend built with Vite
-- React Router navigation
-- Redux Toolkit and React Redux global state
-- Axios API integration
-- Login and logout
-- Protected profile page
-- User profile loading from the backend
-- Edit user first name and last name
-- Static account cards from the provided design
-- Reused static CSS and image assets from `/designs`
-- Swagger transaction API proposal
-
-## Swagger
-
-The transaction API proposal is located at:
-
-```text
-docs/swagger-transactions.yaml
-```
-
-It documents proposed endpoints for:
-
-- Viewing current-month transactions grouped by account
-- Viewing a single transaction
-- Adding transaction metadata
-- Editing transaction metadata
-- Deleting transaction metadata
-
-This proposal is documentation only. The transaction endpoints are not
-implemented in the backend.
-
-## Manual Testing Checklist
-
-Run through this checklist before submission:
-
-- [ ] Can access `/`
-- [ ] Can go to `/login` (`/sign-in` is also supported)
-- [ ] Login works with a seeded test account
-- [ ] Wrong password shows an error
-- [ ] Successful login redirects to `/profile`
-- [ ] Profile data loads from the backend
-- [ ] Edit name works and saves through the API
-- [ ] Data persists after refresh
-- [ ] Logout works
-- [ ] `/profile` and `/user` redirect to `/login` when not logged in
-
-## Notes
-
-The backend requires MongoDB to be running before `npm run dev:server` and
-`npm run populate-db` will work. If MongoDB is not running, the backend will
-crash while connecting to `mongodb://localhost/argentBankDB`.
+- `frontend/src/` contains the React routes, Redux state and API client.
+- `server/` contains the Express routes and MongoDB models.
+- `swagger.yaml` describes the implemented user API.
+- `designs/` and `deliverables/` contain the supplied design references and coursework files.

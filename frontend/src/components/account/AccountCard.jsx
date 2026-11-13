@@ -7,8 +7,8 @@ export default function AccountCard({ title, amount, description }) {
         <p className="account-amount-description">{description}</p>
       </div>
       <div className="account-content-wrapper cta">
-        <button className="transaction-button" type="button">
-          View transactions
+        <button className="transaction-button" type="button" disabled>
+          Transactions unavailable
         </button>
       </div>
     </section>

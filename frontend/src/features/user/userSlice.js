@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { logout } from '../auth/authSlice'
 import {
   fetchUserProfile,
   updateUserProfile
@@ -18,30 +19,43 @@ function requireToken(getState) {
   return token
 }
 
+function profileError(error, fallback, token, { dispatch, getState, rejectWithValue }) {
+  if (error.response?.status === 401 && getState().auth.token === token) {
+    dispatch(logout())
+  }
+  return rejectWithValue(getErrorMessage(error, fallback))
+}
+
 export const getProfile = createAsyncThunk(
   'user/getProfile',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, api) => {
+    const token = requireToken(api.getState)
     try {
-      const response = await fetchUserProfile(requireToken(getState))
+      const response = await fetchUserProfile(token, api.signal)
       return response.body
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, 'Unable to load profile.'))
+      return profileError(error, 'Unable to load profile.', token, api)
     }
+  },
+  {
+    condition: (_, { getState }) => getState().user.status !== 'loading'
   }
 )
 
 export const updateProfile = createAsyncThunk(
   'user/updateProfile',
-  async ({ firstName, lastName }, { getState, rejectWithValue }) => {
+  async ({ firstName, lastName }, api) => {
+    const token = requireToken(api.getState)
     try {
       const response = await updateUserProfile(
-        requireToken(getState),
+        token,
         firstName,
-        lastName
+        lastName,
+        api.signal
       )
       return response.body
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, 'Unable to update profile.'))
+      return profileError(error, 'Unable to update profile.', token, api)
     }
   }
 )
@@ -52,29 +66,23 @@ const initialState = {
   email: '',
   id: '',
   status: 'idle',
-  error: null
+  error: null,
+  requestId: null
 }
 
 const userSlice = createSlice({
   name: 'user',
   initialState,
-  reducers: {
-    clearUser(state) {
-      state.firstName = ''
-      state.lastName = ''
-      state.email = ''
-      state.id = ''
-      state.status = 'idle'
-      state.error = null
-    }
-  },
   extraReducers: builder => {
     builder
-      .addCase(getProfile.pending, state => {
+      .addCase(logout, () => initialState)
+      .addCase(getProfile.pending, (state, action) => {
+        state.requestId = action.meta.requestId
         state.status = 'loading'
         state.error = null
       })
       .addCase(getProfile.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.firstName = action.payload.firstName
         state.lastName = action.payload.lastName
         state.email = action.payload.email
@@ -83,14 +91,17 @@ const userSlice = createSlice({
         state.error = null
       })
       .addCase(getProfile.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.status = 'failed'
         state.error = action.payload
       })
-      .addCase(updateProfile.pending, state => {
+      .addCase(updateProfile.pending, (state, action) => {
+        state.requestId = action.meta.requestId
         state.status = 'loading'
         state.error = null
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.firstName = action.payload.firstName
         state.lastName = action.payload.lastName
         state.email = action.payload.email
@@ -99,13 +110,12 @@ const userSlice = createSlice({
         state.error = null
       })
       .addCase(updateProfile.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.status = 'failed'
         state.error = action.payload
       })
   }
 })
-
-export const { clearUser } = userSlice.actions
 
 export const selectUser = state => state.user
 export const selectUserFirstName = state => state.user.firstName

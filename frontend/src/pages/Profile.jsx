@@ -87,6 +87,7 @@ export default function Profile() {
                 value={firstName}
                 onChange={event => setFirstName(event.target.value)}
                 disabled={isLoading}
+                maxLength={80}
                 required
               />
               <input
@@ -95,6 +96,7 @@ export default function Profile() {
                 value={lastName}
                 onChange={event => setLastName(event.target.value)}
                 disabled={isLoading}
+                maxLength={80}
                 required
               />
             </div>
@@ -122,12 +124,17 @@ export default function Profile() {
             <h1>
               Welcome back
               <br />
-              {fullName || 'Loading profile'}!
+              {fullName ? `${fullName}!` : isLoading ? 'Loading profile…' : 'Profile'}
             </h1>
             {error ? (
               <p className="form-error" role="alert">
                 {error}
               </p>
+            ) : null}
+            {!user.id && status === 'failed' ? (
+              <button className="edit-button" type="button" onClick={() => dispatch(getProfile())}>
+                Retry
+              </button>
             ) : null}
             <button
               className="edit-button"
@@ -140,7 +147,7 @@ export default function Profile() {
           </>
         )}
       </div>
-      <h2 className="sr-only">Accounts</h2>
+      <h2 className="sr-only">Example accounts</h2>
       {accounts.map(account => (
         <AccountCard
           key={account.id}

@@ -5,10 +5,7 @@ import {
   logout,
   selectIsAuthenticated
 } from '../../features/auth/authSlice'
-import {
-  clearUser,
-  selectUserFirstName
-} from '../../features/user/userSlice'
+import { selectUserFirstName } from '../../features/user/userSlice'
 
 export default function Header() {
   const dispatch = useDispatch()
@@ -20,7 +17,6 @@ export default function Header() {
 
   const handleLogout = () => {
     dispatch(logout())
-    dispatch(clearUser())
   }
 
   return (

@@ -1,38 +1,19 @@
-const express = require('express')
-const dotEnv = require('dotenv')
-const cors = require('cors')
-const swaggerUi = require('swagger-ui-express')
-const yaml = require('yamljs')
-const swaggerDocs = yaml.load('./swagger.yaml')
-const dbConnection = require('./database/connection')
+require('dotenv').config()
+const connectDatabase = require('./database/connection')
+const app = require('./app')
 
-dotEnv.config()
+async function start() {
+  if (process.env.NODE_ENV === 'production' && !process.env.SECRET_KEY) {
+    throw new Error('Set SECRET_KEY before starting the API in production.')
+  }
 
-const app = express()
-const PORT = process.env.PORT || 3001
-
-// Connect to the database
-dbConnection()
-
-// Handle CORS issues
-app.use(cors())
-
-// Request payload middleware
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-
-// Handle custom routes
-app.use('/api/v1/user', require('./routes/userRoutes'))
-
-// API Documentation
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs))
+  await connectDatabase()
+  const port = Number(process.env.PORT || 3001)
+  const host = process.env.HOST || '127.0.0.1'
+  app.listen(port, host, () => console.log(`Argent Bank API at http://${host}:${port}`))
 }
 
-app.get('/', (req, res, next) => {
-  res.send('Hello from my Express server v2!')
-})
-
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`)
+start().catch(error => {
+  console.error(`Argent Bank could not start: ${error.message}`)
+  process.exitCode = 1
 })
