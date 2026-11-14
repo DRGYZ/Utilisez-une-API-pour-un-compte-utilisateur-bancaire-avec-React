@@ -1,25 +1,32 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createListenerMiddleware, createSlice } from '@reduxjs/toolkit'
 import { loginUser } from '../../api/userApi'
 
 export const TOKEN_STORAGE_KEY = 'argentBankToken'
 
 function getStoredToken() {
-  if (typeof localStorage === 'undefined') {
+  try {
+    return sessionStorage.getItem(TOKEN_STORAGE_KEY) || localStorage.getItem(TOKEN_STORAGE_KEY)
+  } catch {
     return null
   }
-
-  return localStorage.getItem(TOKEN_STORAGE_KEY)
 }
 
-function saveToken(token) {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token)
+function saveToken(token, rememberMe) {
+  removeToken()
+  try {
+    const storage = rememberMe ? localStorage : sessionStorage
+    storage.setItem(TOKEN_STORAGE_KEY, token)
+  } catch {
+    // The current tab can still use the in-memory session.
   }
 }
 
 function removeToken() {
-  if (typeof localStorage !== 'undefined') {
+  try {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // Storage is unavailable.
   }
 }
 
@@ -38,20 +45,20 @@ export const login = createAsyncThunk(
         throw new Error('Login response did not include a token.')
       }
 
-      saveToken(token)
       return token
     } catch (error) {
-      removeToken()
       return rejectWithValue(getErrorMessage(error, 'Unable to sign in.'))
     }
   }
 )
 
+const storedToken = getStoredToken()
 const initialState = {
-  token: getStoredToken(),
-  isAuthenticated: Boolean(getStoredToken()),
+  token: storedToken,
+  isAuthenticated: Boolean(storedToken),
   status: 'idle',
-  error: null
+  error: null,
+  requestId: null
 }
 
 const authSlice = createSlice({
@@ -59,26 +66,29 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout(state) {
-      removeToken()
       state.token = null
       state.isAuthenticated = false
       state.status = 'idle'
       state.error = null
+      state.requestId = null
     }
   },
   extraReducers: builder => {
     builder
-      .addCase(login.pending, state => {
+      .addCase(login.pending, (state, action) => {
+        state.requestId = action.meta.requestId
         state.status = 'loading'
         state.error = null
       })
       .addCase(login.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.token = action.payload
         state.isAuthenticated = true
         state.status = 'succeeded'
         state.error = null
       })
       .addCase(login.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.token = null
         state.isAuthenticated = false
         state.status = 'failed'
@@ -88,6 +98,23 @@ const authSlice = createSlice({
 })
 
 export const { logout } = authSlice.actions
+
+export const authStorage = createListenerMiddleware()
+authStorage.startListening({
+  actionCreator: login.fulfilled,
+  effect: (action, { getState }) => {
+    if (getState().auth.requestId === action.meta.requestId) {
+      saveToken(action.payload, action.meta.arg.rememberMe)
+    }
+  }
+})
+authStorage.startListening({
+  actionCreator: login.rejected,
+  effect: (action, { getState }) => {
+    if (getState().auth.requestId === action.meta.requestId) removeToken()
+  }
+})
+authStorage.startListening({ actionCreator: logout, effect: removeToken })
 
 export const selectToken = state => state.auth.token
 export const selectIsAuthenticated = state => state.auth.isAuthenticated

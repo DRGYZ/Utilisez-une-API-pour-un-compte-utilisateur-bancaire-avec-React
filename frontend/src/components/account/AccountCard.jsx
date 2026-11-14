@@ -1,16 +1,26 @@
-export default function AccountCard({ title, amount, description }) {
+export default function AccountCard({
+  title,
+  amount,
+  description,
+  category = 'checking',
+  categoryLabel = 'Account',
+  accountNumber
+}) {
   return (
-    <section className="account">
-      <div className="account-content-wrapper">
-        <h3 className="account-title">{title}</h3>
-        <p className="account-amount">{amount}</p>
-        <p className="account-amount-description">{description}</p>
+    <article className="account-card account" data-kind={category}>
+      <div className="account-left account-content-wrapper">
+        <div className="account-tag-row">
+          <span className="account-kind-pill">{categoryLabel}</span>
+          {accountNumber ? <span className="account-number-pill">{accountNumber}</span> : null}
+          <span className="sample-badge">Sample data</span>
+        </div>
+        <h3 className="account-name account-title">{title}</h3>
+        <p className="account-tx-note">Transactions unavailable · API proposal only</p>
       </div>
-      <div className="account-content-wrapper cta">
-        <button className="transaction-button" type="button">
-          View transactions
-        </button>
+      <div className="account-right account-content-wrapper cta">
+        <p className="account-balance account-amount tabular-nums">{amount}</p>
+        <p className="account-balance-type account-amount-description">{description}</p>
       </div>
-    </section>
+    </article>
   )
 }

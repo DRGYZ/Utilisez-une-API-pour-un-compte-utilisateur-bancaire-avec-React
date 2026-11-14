@@ -1,96 +1,62 @@
 const User = require('../database/models/userModel')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const secret = require('../config-session')
 
-module.exports.createUser = async serviceData => {
-  try {
-    const user = await User.findOne({ email: serviceData.email })
-    if (user) {
-      throw new Error('Email already exists')
-    }
-
-    const hashPassword = await bcrypt.hash(serviceData.password, 12)
-
-    const newUser = new User({
-      email: serviceData.email,
-      password: hashPassword,
-      firstName: serviceData.firstName,
-      lastName: serviceData.lastName
-    })
-
-    let result = await newUser.save()
-
-    return result
-  } catch (error) {
-    console.error('Error in userService.js', error)
-    throw new Error(error)
+class UserError extends Error {
+  constructor(status, message) {
+    super(message)
+    this.status = status
   }
 }
 
-module.exports.getUserProfile = async serviceData => {
-  try {
-    const jwtToken = serviceData.headers.authorization.split('Bearer')[1].trim()
-    const decodedJwtToken = jwt.decode(jwtToken)
-    const user = await User.findOne({ _id: decodedJwtToken.id })
-
-    if (!user) {
-      throw new Error('User not found!')
-    }
-
-    return user.toObject()
-  } catch (error) {
-    console.error('Error in userService.js', error)
-    throw new Error(error)
-  }
+function emailAddress(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : ''
 }
 
-module.exports.loginUser = async serviceData => {
-  try {
-    const user = await User.findOne({ email: serviceData.email })
-
-    if (!user) {
-      throw new Error('User not found!')
-    }
-
-    const isValid = await bcrypt.compare(serviceData.password, user.password)
-
-    if (!isValid) {
-      throw new Error('Password is invalid')
-    }
-
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.SECRET_KEY || 'default-secret-key',
-      { expiresIn: '1d' }
-    )
-
-    return { token }
-  } catch (error) {
-    console.error('Error in userService.js', error)
-    throw new Error(error)
+function names({ firstName, lastName }) {
+  if (![firstName, lastName].every(name =>
+    typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 80
+  )) {
+    throw new UserError(400, 'Enter a first and last name of up to 80 characters each.')
   }
+
+  return { firstName: firstName.trim(), lastName: lastName.trim() }
 }
 
-module.exports.updateUserProfile = async serviceData => {
-  try {
-    const jwtToken = serviceData.headers.authorization.split('Bearer')[1].trim()
-    const decodedJwtToken = jwt.decode(jwtToken)
-    const user = await User.findOneAndUpdate(
-      { _id: decodedJwtToken.id },
-      {
-        firstName: serviceData.body.firstName,
-        lastName: serviceData.body.lastName
-      },
-      { new: true }
-    )
-
-    if (!user) {
-      throw new Error('User not found!')
-    }
-
-    return user.toObject()
-  } catch (error) {
-    console.error('Error in userService.js', error)
-    throw new Error(error)
+async function createUser(data) {
+  const email = emailAddress(data.email)
+  if (!email || typeof data.password !== 'string' || !data.password || Buffer.byteLength(data.password) > 72) {
+    throw new UserError(400, 'Enter an email address and a password of up to 72 bytes.')
   }
+
+  if (await User.exists({ email })) throw new UserError(400, 'Email already exists.')
+  const userNames = names(data)
+  const password = await bcrypt.hash(data.password, 12)
+  const user = await User.create({ email, password, ...userNames })
+  return user.toObject()
 }
+
+async function loginUser(data) {
+  const email = emailAddress(data.email)
+  const user = email && typeof data.password === 'string' ? await User.findOne({ email }) : null
+  if (!user || !(await bcrypt.compare(data.password, user.password))) {
+    throw new UserError(400, 'Incorrect email or password.')
+  }
+
+  return { token: jwt.sign({ id: user.id }, secret, { algorithm: 'HS256', expiresIn: '1d' }) }
+}
+
+async function getUserProfile(id) {
+  const user = await User.findById(id)
+  if (!user) throw new UserError(401, 'Please sign in again.')
+  return user.toObject()
+}
+
+async function updateUserProfile(id, data) {
+  const user = await User.findByIdAndUpdate(id, names(data), { new: true })
+  if (!user) throw new UserError(401, 'Please sign in again.')
+  return user.toObject()
+}
+
+module.exports = { createUser, loginUser, getUserProfile, updateUserProfile, UserError }

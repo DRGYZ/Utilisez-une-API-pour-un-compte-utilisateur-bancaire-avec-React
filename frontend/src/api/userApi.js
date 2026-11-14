@@ -5,11 +5,12 @@ export async function loginUser(email, password) {
   return response.data
 }
 
-export async function fetchUserProfile(token) {
+export async function fetchUserProfile(token, signal) {
   const response = await api.post(
     '/user/profile',
     {},
     {
+      signal,
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -18,11 +19,12 @@ export async function fetchUserProfile(token) {
   return response.data
 }
 
-export async function updateUserProfile(token, firstName, lastName) {
+export async function updateUserProfile(token, firstName, lastName, signal) {
   const response = await api.put(
     '/user/profile',
     { firstName, lastName },
     {
+      signal,
       headers: {
         Authorization: `Bearer ${token}`
       }

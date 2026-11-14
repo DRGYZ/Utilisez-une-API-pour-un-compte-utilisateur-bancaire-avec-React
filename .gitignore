@@ -41,6 +41,9 @@ node_modules
 .lock-wscript
 .env
 .env.*
+!.env.example
+/graphify-out/
+/.playwright-cli/
 
 # Runtime configuration for swagger app
 config/runtime.yaml
